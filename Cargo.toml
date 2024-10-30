@@ -2,5 +2,10 @@
 name = "skkdict-sort"
 version = "0.1.0"
 edition = "2021"
+description = "sort skkdict"
+authors = ["mtgto <hogerappa@gmail.com>"]
+readme = "README.md"
+license = "GPL-2.0-only"
 
 [dependencies]
+clap = { version = "4.5.20", features = ["derive"] }
