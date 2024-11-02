@@ -11,7 +11,7 @@ struct Entry {
 
 fn main() {
     let mut okuri_ari_entries: Vec<Entry> = vec![];
-    let mut okuri_nasi_entries : Vec<Entry> = vec![];
+    let mut okuri_nasi_entries: Vec<Entry> = vec![];
     let mut found_body = false;
 
     for line_result in io::stdin().lines() {
@@ -30,10 +30,16 @@ fn main() {
                 (Some(yomi), Some(left)) => {
                     match (yomi.chars().nth_back(0), yomi.chars().nth_back(1)) {
                         (Some(a), Some(b)) if 'a' <= a && a <= 'z' && (b < 'a' || 'z' < b) => {
-                            okuri_ari_entries.push(Entry { yomi: yomi.to_string(), left: left.to_string() });
+                            okuri_ari_entries.push(Entry {
+                                yomi: yomi.to_string(),
+                                left: left.to_string(),
+                            });
                         }
                         _ => {
-                            okuri_nasi_entries.push(Entry { yomi: yomi.to_string(), left: left.to_string() });
+                            okuri_nasi_entries.push(Entry {
+                                yomi: yomi.to_string(),
+                                left: left.to_string(),
+                            });
                         }
                     }
                 }
@@ -44,6 +50,7 @@ fn main() {
         }
     }
     println!(";; okuri-ari entries.");
+    // sort in reverse order
     okuri_ari_entries.sort_by(|a, b| b.yomi.cmp(&a.yomi));
     for entry in okuri_ari_entries {
         println!("{} {}", entry.yomi, entry.left);
