@@ -29,7 +29,7 @@ fn main() {
             match (parts.next(), parts.next()) {
                 (Some(yomi), Some(left)) => {
                     match (yomi.chars().nth_back(0), yomi.chars().nth_back(1)) {
-                        (Some(a), Some(b)) if 'a' <= a && a <= 'z' && (b < 'a' || 'z' < b) => {
+                        (Some(a), Some(b)) if a.is_ascii_alphabetic() && !b.is_ascii_alphabetic() => {
                             okuri_ari_entries.push(Entry {
                                 yomi: yomi.to_string(),
                                 left: left.to_string(),
