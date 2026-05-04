@@ -62,6 +62,27 @@ fn parse_lines<I: Iterator<Item = String>>(
     (header_lines, okuri_ari_entries, okuri_nasi_entries)
 }
 
+/// 同じ見出し語を持つエントリをまとめる。
+/// 入力は既にソート済みであること。後から出てきた候補が末尾に並ぶよう、
+/// 後のエントリの候補を前のエントリの末尾に追記する。
+fn merge_entries(entries: Vec<Entry>) -> Vec<Entry> {
+    let mut merged: Vec<Entry> = vec![];
+    for entry in entries {
+        match merged.last_mut() {
+            Some(last) if last.yomi == entry.yomi => {
+                // "/候補1/候補2/" の先頭 '/' を除いて末尾に連結する
+                // last.left = "/A/B/", entry.left = "/C/" → "/A/B/C/"
+                let tail = entry.left.trim_start_matches('/');
+                last.left.push_str(tail);
+            }
+            _ => {
+                merged.push(entry);
+            }
+        }
+    }
+    merged
+}
+
 /// ソート済みの出力行を生成する。
 fn build_output(
     header_lines: &[String],
@@ -77,6 +98,7 @@ fn build_output(
     output.push(";; okuri-ari entries.".to_string());
     // 送り仮名ありは逆順ソート
     okuri_ari_entries.sort_by(|a, b| b.yomi.cmp(&a.yomi));
+    let okuri_ari_entries = merge_entries(okuri_ari_entries);
     for entry in okuri_ari_entries {
         output.push(format!("{} {}", entry.yomi, entry.left));
     }
@@ -84,6 +106,7 @@ fn build_output(
     output.push(";; okuri-nasi entries.".to_string());
     // 送り仮名なしは昇順ソート
     okuri_nasi_entries.sort_by(|a, b| a.yomi.cmp(&b.yomi));
+    let okuri_nasi_entries = merge_entries(okuri_nasi_entries);
     for entry in okuri_nasi_entries {
         output.push(format!("{} {}", entry.yomi, entry.left));
     }
@@ -262,5 +285,58 @@ mod tests {
         let ari_pos = output.iter().position(|l| l == ";; okuri-ari entries.").unwrap();
         let nasi_pos = output.iter().position(|l| l == ";; okuri-nasi entries.").unwrap();
         assert!(ari_pos < nasi_pos);
+    }
+
+    // --- merge_entries ---
+
+    #[test]
+    fn test_merge_entries_no_duplicates() {
+        let entries = vec![
+            Entry { yomi: "あい".to_string(), left: "/相/愛/".to_string() },
+            Entry { yomi: "うえ".to_string(), left: "/上/".to_string() },
+        ];
+        let merged = merge_entries(entries);
+        assert_eq!(merged.len(), 2);
+        assert_eq!(merged[0].left, "/相/愛/");
+        assert_eq!(merged[1].left, "/上/");
+    }
+
+    #[test]
+    fn test_merge_entries_duplicates_merged() {
+        // "あい /相/愛/" と "あい /藍/" → "あい /相/愛/藍/"
+        let entries = vec![
+            Entry { yomi: "あい".to_string(), left: "/相/愛/".to_string() },
+            Entry { yomi: "あい".to_string(), left: "/藍/".to_string() },
+        ];
+        let merged = merge_entries(entries);
+        assert_eq!(merged.len(), 1);
+        assert_eq!(merged[0].yomi, "あい");
+        assert_eq!(merged[0].left, "/相/愛/藍/");
+    }
+
+    #[test]
+    fn test_merge_entries_three_duplicates() {
+        let entries = vec![
+            Entry { yomi: "あい".to_string(), left: "/相/".to_string() },
+            Entry { yomi: "あい".to_string(), left: "/愛/".to_string() },
+            Entry { yomi: "あい".to_string(), left: "/藍/".to_string() },
+        ];
+        let merged = merge_entries(entries);
+        assert_eq!(merged.len(), 1);
+        assert_eq!(merged[0].left, "/相/愛/藍/");
+    }
+
+    #[test]
+    fn test_build_output_merges_duplicates() {
+        // build_output 経由でもマージされることを確認
+        let nasi = vec![
+            Entry { yomi: "あい".to_string(), left: "/相/愛/".to_string() },
+            Entry { yomi: "あい".to_string(), left: "/藍/".to_string() },
+            Entry { yomi: "うえ".to_string(), left: "/上/".to_string() },
+        ];
+        let output = build_output(&[], vec![], nasi);
+        let nasi_start = output.iter().position(|l| l == ";; okuri-nasi entries.").unwrap();
+        assert_eq!(output[nasi_start + 1], "あい /相/愛/藍/");
+        assert_eq!(output[nasi_start + 2], "うえ /上/");
     }
 }
